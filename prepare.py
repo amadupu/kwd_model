@@ -2,11 +2,23 @@ import utils
 import os
 import shutil
 import random
+import numpy as np
+from pydub import AudioSegment
 
-alexa_path = r'D:\codeathon-18\alexa'
-mixed_path = r'D:\codeathon-18\mixed'
-valid_train_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-train'
-valid_test_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-test'
+# windows
+if os.name =='nt':
+    noise_path = r'D:\codeathon-18\demand'
+    alexa_path = r'D:\codeathon-18\alexa'
+    mixed_path = r'D:\codeathon-18\mixed'
+    valid_train_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-train'
+    valid_test_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-test'
+else:
+    noise_path = r'/home/arun_madupu/projects/corpus/demand'
+    alexa_path = r'/home/arun_madupu/projects/corpus/alexa'
+    mixed_path = r'/home/arun_madupu/projects/corpus/mixed'
+    valid_train_path = r'/home/arun_madupu/projects/corpus/cv_corpus_v1/cv-valid-train'
+    valid_test_path = r'/home/arun_madupu/projects/corpus/cv_corpus_v1/cv-valid-test'
+
 
 def prepare_data(num_samples,train_ratio):
 
@@ -101,7 +113,40 @@ def prepare_data(num_samples,train_ratio):
         else:
             shutil.copy(filepath, os.path.join(target,filename))
 
+def perform_audio_mixing(file1,file2,target):
+    sound1 = AudioSegment.from_file(file1)
+    sound2 = AudioSegment.from_file(file2)
 
+    combined = sound1.overlay(sound2)
+
+    combined.export(target, format='wav')
+
+def mix_data():
+
+    utils.clean_dir(mixed_path)
+    noise_files = list()
+    for r,d,f in os.walk(noise_path):
+        for fs in f:
+            filename = os.path.join(r,fs)
+            noise_files.append(filename)
+
+
+    count1 = 0
+    count2 = 0
+    count3 = 0
+    for r,d,f in os.walk(alexa_path):
+        for fs in f:
+            count1 += 1
+            indices = np.random.randint(0,len(noise_files),5)
+            n_files = [ noise_files[i] for i in list(indices)]
+            for fn in n_files:
+                count2 += 1
+                count3 += 1
+                target = os.path.join(mixed_path,'{}.wav'.format(utils.get_file_timestamp()))
+                perform_audio_mixing(os.path.join(r,fs),fn,target)
+                print('Processing: {} {} {}'.format(count1,count2,count3))
+            count2 = 0
 
 if __name__ == '__main__':
-    prepare_data(1250,0.8)
+    print('READY')
+    # prepare_data(1250,0.8)
