@@ -6,6 +6,10 @@ import numpy as np
 from pydub import AudioSegment
 from data_encoder import TFEncoder
 
+total_samples = 3000
+noise_subset = 5
+ratio = 0.8
+
 # windows
 if os.name =='nt':
     noise_path = r'D:\codeathon-18\demand'
@@ -147,7 +151,7 @@ def create_mixed_data():
     for r,d,f in os.walk(alexa_path):
         for fs in f:
             count1 += 1
-            indices = np.random.randint(0,len(noise_files),5)
+            indices = np.random.randint(0,len(noise_files),noise_subset)
             n_files = [ noise_files[i] for i in list(indices)]
             for fn in n_files:
                 count2 += 1
@@ -174,7 +178,7 @@ if __name__ == '__main__':
     print('CREATING NOISE VERSION OF SPEECH SAMPLES')
     create_mixed_data()
     print('INITIALIZING DATA SETS')
-    init_data_sets(1250,0.8)
+    init_data_sets(total_samples,ratio)
     print('INITIALIZING RECORDS')
     init_records()
     print('FINISHED')
