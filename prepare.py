@@ -122,7 +122,7 @@ def perform_audio_mixing(file1,file2,target):
     combined.export(target, format='wav')
 
 def mix_data():
-
+    os.makedirs(mixed_path, exist_ok=True)
     utils.clean_dir(mixed_path)
     noise_files = list()
     for r,d,f in os.walk(noise_path):
@@ -148,5 +148,6 @@ def mix_data():
             count2 = 0
 
 if __name__ == '__main__':
-    print('READY')
-    # prepare_data(1250,0.8)
+    #mix_data()
+    prepare_data(1250,0.8)
+    print('FINISHED')
