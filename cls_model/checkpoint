@@ -1,0 +1,3 @@
+model_checkpoint_path: "alexa-730"
+all_model_checkpoint_paths: "alexa-720"
+all_model_checkpoint_paths: "alexa-730"
