@@ -4,6 +4,7 @@ import shutil
 import random
 import numpy as np
 from pydub import AudioSegment
+from data_encoder import TFEncoder
 
 # windows
 if os.name =='nt':
@@ -20,7 +21,7 @@ else:
     valid_test_path = r'/home/arun_madupu/projects/corpus/cv_corpus_v1/cv-valid-test'
 
 
-def prepare_data(num_samples,train_ratio):
+def init_data_sets(num_samples,train_ratio):
 
     train_samples = int(num_samples * train_ratio)
     eval_samples = num_samples - train_samples
@@ -121,7 +122,7 @@ def perform_audio_mixing(file1,file2,target):
 
     combined.export(target, format='wav')
 
-def mix_data():
+def create_mixed_data():
     os.makedirs(mixed_path, exist_ok=True)
     utils.clean_dir(mixed_path)
     noise_files = list()
@@ -147,7 +148,24 @@ def mix_data():
                 print('Processing: {} {} {}'.format(count1,count2,count3))
             count2 = 0
 
+def init_records():
+    encoder = TFEncoder.Builder().\
+        set_src_path(r'data').\
+        set_dst_path(r'records').\
+        set_max_steps(600).\
+        build()
+
+    utils.clean_dir(r'records')
+    
+    result = encoder.encode()
+
+    print(result)
+
 if __name__ == '__main__':
-    #mix_data()
-    prepare_data(1250,0.8)
+    print('CREATING NOISE VERSION OF SPEECH SAMPLES')
+    create_mixed_data()
+    print('INITIALIZING DATA SETS')
+    init_data_sets(1250,0.8)
+    print('INITIALIZING RECORDS')
+    init_records()
     print('FINISHED')
