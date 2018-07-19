@@ -22,7 +22,7 @@ def get_features(signal,rate, normalize):
 
     features =  np.concatenate((features,delta),axis=-1)
 
-    print('delta: ', np.shape(features))
+    # print('delta: ', np.shape(features))
 
 
 

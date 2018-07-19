@@ -315,9 +315,10 @@ class RNNModel(object):
 
         score = self.sess.run(self.predictions, feed_dict)
 
-        print(score[:steps[0]])
+        # print(score[:steps[0]])
 
-        score = np.sum(score)/steps
+        if not self.is_classifier:
+            score = np.sum(score)/steps
 
         return score
 

@@ -38,6 +38,7 @@ def init_data_sets(num_samples,train_ratio):
     # divide alexa data into train postive and eval positive as per train ratio
     distribution_ratio = int(train_ratio/(1-train_ratio))
     count  = 0
+    print('Copying Alexa Base Files..')
     for r,d,f in os.walk(alexa_path):
         for file in f:
             count += 1
@@ -54,6 +55,7 @@ def init_data_sets(num_samples,train_ratio):
                 eval_pos_samples -= 1
 
             shutil.copy(filename, os.path.join(target,'{}-{}'.format(os.path.basename(r),file)))
+
 
     # divide mixed data into train postive and eval positive as per train ratio
     mixed_files = list()
@@ -73,12 +75,16 @@ def init_data_sets(num_samples,train_ratio):
     train_pos_indices = random.sample(range(0,train_end),train_pos_samples)
     eval_pos_indices = random.sample(range(train_end,mixed_file_len),eval_pos_samples)
 
+
+
     target = os.path.join('data', os.path.join('train', 'positive'))
+    print('Copying Alexa + Noise Mixed Training Files: ', len(train_pos_indices))
     for index in train_pos_indices:
         filename = mixed_files[index]
         shutil.copy(filename, target)
 
     target = os.path.join('data', os.path.join('eval', 'positive'))
+    print('Copying Alexa + Noise Mixed Eval Files: ', len(eval_pos_indices))
     for index in eval_pos_indices:
         filename = mixed_files[index]
         shutil.copy(filename, target)
@@ -91,6 +97,7 @@ def init_data_sets(num_samples,train_ratio):
     file_indices = random.sample(range(0,file_len),train_neg_samples)
 
     target = os.path.join('data', os.path.join('train', 'negative'))
+    print('Copying Train Negative Samples: ', len(file_indices))
     for index in file_indices:
         filename = file_lst[index]
         filepath = os.path.join(valid_train_path,filename)
@@ -106,6 +113,8 @@ def init_data_sets(num_samples,train_ratio):
     file_indices = random.sample(range(0,file_len),eval_neg_samples)
 
     target = os.path.join('data', os.path.join('eval', 'negative'))
+
+    print('Copying Eval Negative Samples: ',len(file_indices))
     for index in file_indices:
         filename = file_lst[index]
         filepath = os.path.join(valid_test_path,filename)
