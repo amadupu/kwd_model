@@ -171,7 +171,9 @@ class RNNModel(object):
                 self.g_init = tf.global_variables_initializer()
                 self.l_init = tf.local_variables_initializer()
 
-                self.sess = tf.Session()
+
+
+                self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
 
                 self.summary = tf.summary.merge_all()
 
