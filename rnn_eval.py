@@ -95,7 +95,7 @@ def callback(in_data, frame_count, time_info, status):
             audio_segment = AudioSegment(utterance,metadata=metadata)
             audio_chunks = split_on_silence(audio_segment, min_silence_len=min_silence_len, silence_thresh=silence_thresold, keep_silence=keep_silence)
             for i, chunk in enumerate(audio_chunks):
-                data = audio_segment.raw_data
+                data = chunk.raw_data
                 fmt = '<%ih' % (len(data) / sample_width)
                 signal = np.array(struct.unpack_from(fmt, data))
                 xs = get_features(signal,frame_rate,True)
@@ -111,8 +111,8 @@ def callback(in_data, frame_count, time_info, status):
 
                 out_file = os.path.join('chunks',
                                         'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
-                audio_segment.export(out_file, format='raw')
-                break
+                chunk.export(out_file, format='raw')
+                # break
 
 
 

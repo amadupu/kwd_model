@@ -4,11 +4,13 @@ import shutil
 import random
 import numpy as np
 from pydub import AudioSegment
+from pydub.silence import split_on_silence
 from data_encoder import TFEncoder
 
-total_samples = 3000
+total_samples = 1250
 noise_subset = 5
 ratio = 0.8
+noise_thresold = -35
 
 # windows
 if os.name =='nt':
@@ -58,7 +60,15 @@ def init_data_sets(num_samples,train_ratio):
                 target = os.path.join('data',os.path.join('eval', 'positive'))
                 eval_pos_samples -= 1
 
-            shutil.copy(filename, os.path.join(target,'{}-{}'.format(os.path.basename(r),file)))
+            sound = AudioSegment.from_file(filename)
+            audio_chunks = split_on_silence(sound, min_silence_len=400, silence_thresh=noise_thresold,
+                                            keep_silence=50)
+
+            for i, chunk in enumerate(audio_chunks):
+                chunk.export(os.path.join(target,'{}-{}'.format(os.path.basename(r),file)), format='wav')
+                break
+
+            # shutil.copy(filename, os.path.join(target,'{}-{}'.format(os.path.basename(r),file)))
 
 
     # divide mixed data into train postive and eval positive as per train ratio
@@ -133,7 +143,11 @@ def perform_audio_mixing(file1,file2,target):
 
     combined = sound1.overlay(sound2)
 
-    combined.export(target, format='wav')
+    audio_chunks = split_on_silence(combined, min_silence_len=400, silence_thresh=noise_thresold, keep_silence=50)
+
+    for i, chunk in enumerate(audio_chunks):
+        chunk.export(target, format='wav')
+
 
 def create_mixed_data():
     os.makedirs(mixed_path, exist_ok=True)
