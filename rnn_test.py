@@ -1,5 +1,6 @@
 from rnn_model import RNNModel
 import threading
+import os
 
 # hyper parameters
 
@@ -19,12 +20,14 @@ model_path = 'rnn_cls_model'
 logs_path = 'rnn_cls_logs'
 keep_prob = 0.85
 
+
+
 if __name__ == '__main__':
     def child_process(curr_step):
         print('Starting child process')
         model = RNNModel.Builder().set_max_steps(max_steps). \
             set_feature_size(feature_size). \
-            set_read_path('records/eval'). \
+            set_read_path(os.path.join('records','eval')). \
             set_epochs(1). \
             set_cell_type(cell_type). \
             set_cell_size(cell_size). \
@@ -51,7 +54,7 @@ if __name__ == '__main__':
 
     train_model = RNNModel.Builder().set_max_steps(max_steps).\
         set_feature_size(feature_size).\
-        set_read_path('records/train').\
+        set_read_path(os.path.join('records', 'train')). \
         set_epochs(train_epochs).\
         set_cell_type(cell_type).\
         set_cell_size(cell_size).\
