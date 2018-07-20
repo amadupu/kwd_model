@@ -1,0 +1,3 @@
+model_checkpoint_path: "alexa-1380"
+all_model_checkpoint_paths: "alexa-1370"
+all_model_checkpoint_paths: "alexa-1380"
