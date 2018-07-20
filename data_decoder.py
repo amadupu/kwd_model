@@ -81,11 +81,11 @@ if __name__ == '__main__':
     decoder = TFDecoder.Builder().\
         set_feature_size(26).\
         set_num_epochs(1).\
-        set_path('records/eval').\
+        set_path(os.path.join('records','train')).\
         set_shuffle_status(True).\
         build()
 
-    batch_input = decoder.dequeue(True)
+    batch_input = decoder.dequeue(False)
 
     l_init = tf.global_variables_initializer()
     g_init = tf.local_variables_initializer()
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         try:
             while not coord.should_stop():
                 result = sess.run(batch_input)
-                print(result[0])
+                print(result[2])
         except tf.errors.OutOfRangeError:
             pass
         finally:

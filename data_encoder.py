@@ -3,6 +3,8 @@ import features
 import os,utils
 import numpy as np
 import re
+from pydub.silence import detect_nonsilent
+from pydub import AudioSegment
 
 
 class TFEncoder(object):
@@ -19,7 +21,7 @@ class TFEncoder(object):
         with tf.python_io.TFRecordWriter(filename) as fp:
             fp.write(ex.SerializeToString())
 
-    def make_seq_example(self, xs, ys):
+    def make_seq_example(self, xs, ys,labels):
 
         sequence_length = len(xs)
 
@@ -38,8 +40,8 @@ class TFEncoder(object):
         fl_tokens = ex.feature_lists.feature_list['tokens']
         fl_labels = ex.feature_lists.feature_list['labels']
 
-        labels = np.ones([len(xs)],dtype=np.int64) * ys
-        labels = np.pad(labels,[[0,self.max_steps - sequence_length]],mode='constant' )
+        # labels = np.ones([len(xs)],dtype=np.int64) * ys
+        # labels = np.pad(labels,[[0,self.max_steps - sequence_length]],mode='constant' )
 
         for token, label in zip(xs, labels):
             if np.ndim(token) == 0:
@@ -82,12 +84,35 @@ class TFEncoder(object):
                 parent_dir = os.path.basename(os.path.dirname(r))
 
 
+                labels = np.zeros(self.max_steps,dtype=np.int64)
 
-                ys = 0
+                label = 0
                 if child_dir == 'positive':
-                    ys = 1
+                    label = 1
+                    segment = AudioSegment.from_wav(filename)
+                    speech_ranges = detect_nonsilent(audio_segment=segment, min_silence_len=100,
+                                                     silence_thresh=-40)
 
-                ex = self.make_seq_example(xs, ys)
+                    print('SPEECH: filename : {} {}'.format(fname, speech_ranges))
+                    for start,end in speech_ranges:
+                        print('SPEECH: filename : {} {} {}'.format(fname,start,end))
+                        start = (int)(start/10)
+                        end = (int)(end/10)
+                        if start >= self.max_steps :
+                            print('SPEECH START EXCEED: filename : {} {} {}'.format(fname, start, self.max_steps))
+                            break
+                        if end > self.max_steps:
+                            print('SPEECH END LIMIT: filename : {} {} {}'.format(fname, end, self.max_steps))
+
+                            end = self.max_steps
+                        labels[start:end:] = label
+
+                    print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
+
+
+
+
+                ex = self.make_seq_example(xs, label, labels)
 
                 self.dump_record(ex,parent_dir)
 
