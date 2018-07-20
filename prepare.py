@@ -7,7 +7,7 @@ from pydub import AudioSegment
 from pydub.silence import split_on_silence
 from data_encoder import TFEncoder
 
-total_samples = 1250
+total_samples = 1000
 noise_subset = 5
 ratio = 0.8
 noise_thresold = -35
@@ -60,15 +60,15 @@ def init_data_sets(num_samples,train_ratio):
                 target = os.path.join('data',os.path.join('eval', 'positive'))
                 eval_pos_samples -= 1
 
-            sound = AudioSegment.from_file(filename)
-            audio_chunks = split_on_silence(sound, min_silence_len=400, silence_thresh=noise_thresold,
-                                            keep_silence=50)
+            # sound = AudioSegment.from_file(filename)
+            # audio_chunks = split_on_silence(sound, min_silence_len=400, silence_thresh=noise_thresold,
+            #                                 keep_silence=50)
+            #
+            # for i, chunk in enumerate(audio_chunks):
+            #     chunk.export(os.path.join(target,'{}-{}'.format(os.path.basename(r),file)), format='wav')
+            #     break
 
-            for i, chunk in enumerate(audio_chunks):
-                chunk.export(os.path.join(target,'{}-{}'.format(os.path.basename(r),file)), format='wav')
-                break
-
-            # shutil.copy(filename, os.path.join(target,'{}-{}'.format(os.path.basename(r),file)))
+            shutil.copy(filename, os.path.join(target,'{}-{}'.format(os.path.basename(r),file)))
 
 
     # divide mixed data into train postive and eval positive as per train ratio
@@ -143,10 +143,12 @@ def perform_audio_mixing(file1,file2,target):
 
     combined = sound1.overlay(sound2)
 
-    audio_chunks = split_on_silence(combined, min_silence_len=400, silence_thresh=noise_thresold, keep_silence=50)
+    combined.export(target, format='wav')
 
-    for i, chunk in enumerate(audio_chunks):
-        chunk.export(target, format='wav')
+    # audio_chunks = split_on_silence(combined, min_silence_len=400, silence_thresh=noise_thresold, keep_silence=50)
+    #
+    # for i, chunk in enumerate(audio_chunks):
+    #     chunk.export(target, format='wav')
 
 
 def create_mixed_data():
@@ -189,10 +191,10 @@ def init_records():
     print(result)
 
 if __name__ == '__main__':
-    print('CREATING NOISE VERSION OF SPEECH SAMPLES')
-    create_mixed_data()
-    print('INITIALIZING DATA SETS')
-    init_data_sets(total_samples,ratio)
+    # print('CREATING NOISE VERSION OF SPEECH SAMPLES')
+    # create_mixed_data()
+    # print('INITIALIZING DATA SETS')
+    # init_data_sets(total_samples,ratio)
     print('INITIALIZING RECORDS')
     init_records()
     print('FINISHED')

@@ -19,5 +19,9 @@ if __name__ == '__main__':
 
     utils.clean_dir('records')
     utils.clean_dir('data')
+    utils.clean_dir('rnn_seq_model')
+    utils.clean_dir('rnn_cls_model')
+    utils.clean_dir('rnn_seq_logs')
+    utils.clean_dir('rnn_cls_logs')
 
     # create directory
