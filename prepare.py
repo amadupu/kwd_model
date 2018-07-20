@@ -191,10 +191,10 @@ def init_records():
     print(result)
 
 if __name__ == '__main__':
-    # print('CREATING NOISE VERSION OF SPEECH SAMPLES')
-    # create_mixed_data()
-    # print('INITIALIZING DATA SETS')
-    # init_data_sets(total_samples,ratio)
+    print('CREATING NOISE VERSION OF SPEECH SAMPLES')
+    create_mixed_data()
+    print('INITIALIZING DATA SETS')
+    init_data_sets(total_samples,ratio)
     print('INITIALIZING RECORDS')
     init_records()
     print('FINISHED')

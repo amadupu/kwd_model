@@ -136,9 +136,9 @@ class RNNModel(object):
                     logits = tf.add(tf.matmul(rnn_outputs,Wout),Bout)
 
                     # for seq2seq calculations
-                    self.logits = logits
+                    self.logits = tf.nn.softmax(logits)
 
-                    self.predictions = tf.argmax(tf.nn.softmax(logits),axis=-1)
+                    self.predictions = tf.argmax(self.logits,axis=-1)
                     self.flat_labels = tf.reshape(self.ys, [-1])
 
 
@@ -152,7 +152,7 @@ class RNNModel(object):
                         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=self.ys))
                     else:
                         # seq2seq loss
-                        self.seq_logits =  tf.unstack(tf.reshape(self.logits, [-1,self.max_steps,self.num_classes]),axis=1)
+                        self.seq_logits =  tf.unstack(tf.reshape(logits, [-1,self.max_steps,self.num_classes]),axis=1)
                         self.seq_lables =  tf.unstack(self.ys,num=self.max_steps, axis=1)
                         # self.seq_lables = tf.reshape(self.ys,[-1])
                         self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(self.xs),axis=-1)),axis=1,num=self.max_steps)
@@ -173,7 +173,7 @@ class RNNModel(object):
 
 
 
-                self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+                self.sess = tf.Session(config=tf.ConfigProto(log_device_placement=False))
 
                 self.summary = tf.summary.merge_all()
 
@@ -228,7 +228,7 @@ class RNNModel(object):
             total_acc = 0.0
 
             while not self.coord.should_stop():
-                _,loss,  accuracy, summary, final_state, ys = self.sess.run([self.train_step,self.loss, self.accuracy, self.summary, self.final_state, self.ys],feed_dict)
+                _,loss,  accuracy, summary, final_state, ys, steps = self.sess.run([self.train_step,self.loss, self.accuracy, self.summary, self.final_state, self.ys,self.steps],feed_dict)
                 total_loss += loss
                 total_acc += accuracy
                 count += 1
@@ -238,6 +238,7 @@ class RNNModel(object):
                 # print(final_state)
                 # print('Final State:{} {} {}'.format(self.oper_mode,np.shape(final_state), final_state))
                 current_step = tf.train.global_step(self.sess, self.global_step)
+                print('Train: ',current_step,loss,accuracy,ys,steps)
                 if current_step % self.validation_step == 0:
                     self.summary_writer.add_summary(summary, current_step)
                     self.summary_writer.flush()
@@ -257,7 +258,7 @@ class RNNModel(object):
 
                 # print(np.shape(pred), np.shape(labels), accuracy)
                 # print(pred,labels)
-                # feed_dict[self.state] = final_state
+                feed_dict[self.state] = final_state
 
 
 
@@ -313,14 +314,18 @@ class RNNModel(object):
     def test(self,xs,steps):
         feed_dict = {self.keepprob: 1.0, self.xs : xs, self.steps : steps}
 
-        score = self.sess.run(self.predictions, feed_dict)
+        score,logits = self.sess.run([self.predictions,self.logits], feed_dict)
 
         # print(score[:steps[0]])
+
+        # print(score,steps)
+
+        logits = np.mean(logits,axis=0)
 
         if not self.is_classifier:
             score = np.sum(score)/steps
 
-        return score
+        return score,logits
 
 
     class Builder():

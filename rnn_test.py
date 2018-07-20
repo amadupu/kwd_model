@@ -9,15 +9,20 @@ max_steps = 600
 train_epochs = 1000
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
-batch_size = 200
-num_classes = 2
+batch_size = 1
+num_classes = 3
 num_layers = 2
 learning_rate = 1e-4
 model_name = 'alexa'
-is_classifer = True
-validation_step = 10
-model_path = 'rnn_cls_model'
-logs_path = 'rnn_cls_logs'
+is_classifer = False
+validation_step = 1000
+if is_classifer is True:
+    model_path = 'rnn_cls_model'
+    logs_path = 'rnn_cls_logs'
+else:
+    model_path = 'rnn_seq_model'
+    logs_path = 'rnn_seq_logs'
+
 keep_prob = 0.85
 
 

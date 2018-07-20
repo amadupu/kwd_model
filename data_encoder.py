@@ -89,28 +89,29 @@ class TFEncoder(object):
                 label = 0
                 if child_dir == 'positive':
                     label = 1
-                    segment = AudioSegment.from_wav(filename)
-                    speech_ranges = detect_nonsilent(audio_segment=segment, min_silence_len=100,
-                                                     silence_thresh=-40)
 
-                    print('SPEECH: filename : {} {}'.format(fname, speech_ranges))
-                    for start,end in speech_ranges:
-                        print('SPEECH: filename : {} {} {}'.format(fname,start,end))
-                        start = (int)(start/10)
-                        end = (int)(end/10)
-                        if start >= self.max_steps :
-                            print('SPEECH START EXCEED: filename : {} {} {}'.format(fname, start, self.max_steps))
-                            break
-                        if end > self.max_steps:
-                            print('SPEECH END LIMIT: filename : {} {} {}'.format(fname, end, self.max_steps))
+                segment = AudioSegment.from_wav(filename)
+                speech_ranges = detect_nonsilent(audio_segment=segment, min_silence_len=100,
+                                                 silence_thresh=-40)
 
-                            end = self.max_steps
-                        labels[start:end:] = label
+                print('SPEECH: filename : {} {}'.format(fname, speech_ranges))
+                for start, end in speech_ranges:
+                    print('SPEECH: filename : {} {} {}'.format(fname, start, end))
+                    start = (int)(start / 10)
+                    end = (int)(end / 10)
+                    if start >= self.max_steps:
+                        print('SPEECH START EXCEED: filename : {} {} {}'.format(fname, start, self.max_steps))
+                        break
+                    if end > self.max_steps:
+                        print('SPEECH END LIMIT: filename : {} {} {}'.format(fname, end, self.max_steps))
 
-                    print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
+                        end = self.max_steps
+                    if label == 0:
+                        labels[start:end:] = 2
+                    else:
+                        labels[start:end:] = 1
 
-
-
+                print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
 
                 ex = self.make_seq_example(xs, label, labels)
 

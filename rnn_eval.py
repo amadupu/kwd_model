@@ -18,7 +18,7 @@ outfile = 'recording.raw'
 in_speech = False
 utterance = b''
 
-silence_thresold = -30
+silence_thresold = -40
 min_silence_len=400
 keep_silence=100
 
@@ -37,11 +37,11 @@ max_steps = 600
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
 batch_size = 1
-num_classes = 2
+num_classes = 3
 num_layers = 2
 model_name = 'alexa'
-is_classifer = True
-model_path = 'cls_model'
+is_classifer = False
+model_path = 'seq_model'
 
 keep_prob = 1.0
 
@@ -94,25 +94,38 @@ def callback(in_data, frame_count, time_info, status):
             }
             audio_segment = AudioSegment(utterance,metadata=metadata)
             audio_chunks = split_on_silence(audio_segment, min_silence_len=min_silence_len, silence_thresh=silence_thresold, keep_silence=keep_silence)
-            for i, chunk in enumerate(audio_chunks):
-                data = chunk.raw_data
-                fmt = '<%ih' % (len(data) / sample_width)
-                signal = np.array(struct.unpack_from(fmt, data))
-                xs = get_features(signal,frame_rate,True)
-                steps = len(xs)
-                xs = xs[:max_steps]
-                sequence_length = len(xs)
-                xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
-                score = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
-
-                print('segment: {} {} score: {}'.format(chunk_count,i,score))
 
 
+            data = audio_segment.raw_data
+            fmt = '<%ih' % (len(data) / sample_width)
+            signal = np.array(struct.unpack_from(fmt, data))
+            xs = get_features(signal, frame_rate, True)
+            steps = len(xs)
+            xs = xs[:max_steps]
+            sequence_length = len(xs)
+            xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+            score = model.test(np.reshape(xs, [-1, max_steps, feature_size]), [sequence_length])
 
-                out_file = os.path.join('chunks',
-                                        'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
-                chunk.export(out_file, format='raw')
-                # break
+            print('segment: {} score: {} audio chunks: {}'.format(chunk_count,score,len(audio_chunks)))
+
+            # for i, chunk in enumerate(audio_chunks):
+            #     data = chunk.raw_data
+            #     fmt = '<%ih' % (len(data) / sample_width)
+            #     signal = np.array(struct.unpack_from(fmt, data))
+            #     xs = get_features(signal,frame_rate,True)
+            #     steps = len(xs)
+            #     xs = xs[:max_steps]
+            #     sequence_length = len(xs)
+            #     xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+            #     score = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
+            #
+            #     print('segment: {} {} score: {}'.format(chunk_count,i,score))
+            #
+            #
+            #
+            #     out_file = os.path.join('chunks',
+            #                             'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
+            #     chunk.export(out_file, format='raw')
 
 
 
