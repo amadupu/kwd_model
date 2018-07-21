@@ -5,17 +5,17 @@ import os
 # hyper parameters
 
 feature_size=26
-max_steps = 600
-train_epochs = 1000
+max_steps = 100
+train_epochs = 10
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
-batch_size = 1
+batch_size = 100
 num_classes = 3
 num_layers = 2
 learning_rate = 1e-4
 model_name = 'alexa'
 is_classifer = False
-validation_step = 1000
+validation_step = 3
 if is_classifer is True:
     model_path = 'rnn_cls_model'
     logs_path = 'rnn_cls_logs'
@@ -36,7 +36,7 @@ if __name__ == '__main__':
             set_epochs(1). \
             set_cell_type(cell_type). \
             set_cell_size(cell_size). \
-            set_batch_size(batch_size). \
+            set_batch_size(10). \
             set_class_size(num_classes). \
             set_layer_size(num_layers). \
             set_model_path(model_path). \

@@ -4,9 +4,9 @@ import tensorflow as tf
 import numpy as np
 if __name__ == '__main__':
     decoder = TFDecoder.Builder(). \
-        set_feature_size(13). \
+        set_feature_size(26). \
         set_num_epochs(1). \
-        set_path('records/train'). \
+        set_path('records/eval'). \
         set_shuffle_status(False). \
         build()
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
                 # print(result[0], result[1], result[2], result[3])
                 # print(np.shape(result[4]),np.shape(result[5]))
-                print(result[1], result[2])
+                print(result[0],result[1],result[2],result[3],np.shape(result[4]), np.shape(result[5]))
         except tf.errors.OutOfRangeError:
             pass
         finally:

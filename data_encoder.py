@@ -21,20 +21,20 @@ class TFEncoder(object):
         with tf.python_io.TFRecordWriter(filename) as fp:
             fp.write(ex.SerializeToString())
 
-    def make_seq_example(self, xs, ys,labels):
+    def make_seq_example(self, xs, ys,labels,id):
 
         sequence_length = len(xs)
 
-        xs = np.pad(xs, [[0, self.max_steps - sequence_length],[0,0]],mode='constant')
+        # xs = np.pad(xs, [[0, self.max_steps - sequence_length],[0,0]],mode='constant')
         ex = tf.train.SequenceExample()
         # add context features
 
         ex.context.feature['len'].int64_list.value.append(sequence_length)
         ex.context.feature['label'].int64_list.value.append(ys)
 
-        # ex.context.feature['id'].int64_list.value.append(id)
-        # ex.context.feature['seq-id'].int64_list.value.append(self.seq_id)
-        # self.seq_id += 1
+        ex.context.feature['id'].int64_list.value.append(id)
+        ex.context.feature['seq-id'].int64_list.value.append(self.seq_id)
+        self.seq_id += 1
 
         # add sequence features
         fl_tokens = ex.feature_lists.feature_list['tokens']
@@ -55,8 +55,8 @@ class TFEncoder(object):
         return ex
 
     def encode(self,duration=None):
-        max_steps = 0
-        min_steps = 10000000
+        # max_steps = 0
+        # min_steps = 10000000
         file_count = 0
         exceed_count = 0
         for r, d, f in os.walk(self.src):
@@ -68,56 +68,86 @@ class TFEncoder(object):
 
                 xs, id = features.parse_audio_file(filename, normalize=True, duration=duration)
                 steps = len(xs)
-                xs = xs[:self.max_steps]
-
-                if steps > self.max_steps:
-                    exceed_count += 1
-
-                print(file_count, max_steps, min_steps, steps)
-                if steps > max_steps:
-                    max_steps = steps
-
-                if min_steps > steps:
-                    min_steps = steps
+                count = 0
 
                 child_dir = os.path.basename(r)
                 parent_dir = os.path.basename(os.path.dirname(r))
-
-
-                labels = np.zeros(self.max_steps,dtype=np.int64)
-
-                label = 0
-                if child_dir == 'positive':
-                    label = 1
+                target = os.path.join(self.dst, parent_dir)
+                target = os.path.join(target, '{}.trf'.format(utils.get_file_timestamp()))
+                tf_writer = tf.python_io.TFRecordWriter(target)
 
                 segment = AudioSegment.from_wav(filename)
                 speech_ranges = detect_nonsilent(audio_segment=segment, min_silence_len=100,
                                                  silence_thresh=-40)
 
                 print('SPEECH: filename : {} {}'.format(fname, speech_ranges))
-                for start, end in speech_ranges:
-                    print('SPEECH: filename : {} {} {}'.format(fname, start, end))
-                    start = (int)(start / 10)
-                    end = (int)(end / 10)
-                    if start >= self.max_steps:
-                        print('SPEECH START EXCEED: filename : {} {} {}'.format(fname, start, self.max_steps))
-                        break
-                    if end > self.max_steps:
-                        print('SPEECH END LIMIT: filename : {} {} {}'.format(fname, end, self.max_steps))
 
-                        end = self.max_steps
-                    if label == 0:
-                        labels[start:end:] = 2
-                    else:
-                        labels[start:end:] = 1
+                while count < steps:
+                    _xs = xs[count  : count + self.max_steps]
+                    max_steps = len(_xs)
+                    labels = np.zeros(max_steps,dtype=np.int64)
+                    label = 0
+                    if child_dir == 'positive':
+                        label = 1
 
-                print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
+                    for start, end in speech_ranges:
+                        print('SPEECH: filename : {} {} {}'.format(fname, start, end))
 
-                ex = self.make_seq_example(xs, label, labels)
+                        start = (int)(start / 10)
+                        end = (int)(end / 10)
 
-                self.dump_record(ex,parent_dir)
+                        print('SPEECH WINDOW START: start: {} end: {} count: {}'.format(start,end,count))
 
-        return file_count, max_steps, min_steps, exceed_count
+
+                        if start < count:
+                            if count < end:
+                                start = count
+                            else:
+                                print('SPEECH WINDOW IGNORE: start: {} end: {} count: {}',start,end,count)
+                                continue
+
+                        print('SPEECH WINDOW END: start: {} end: {} count: {}'.format(start, end, count))
+
+                        # adjust start and end to relative reference
+                        start -= count
+                        end -= count
+
+                        print('SPEECH RELATIVE INDEX: start: {} end: {} count: {}', start, end, count)
+
+                        # if start is falling outside the window we need to break
+                        if start >= max_steps:
+                            print('SPEECH START EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps,count))
+                            break
+
+                        # if end is falling outside the window we need truncate and capture the leftover offset for next iteration
+                        if end > max_steps:
+                            end = max_steps
+                            print('SPEECH END LIMIT: filename : fname: {} start: {} end: {} max_steps: {} count: {} end_mark: {}'.format(fname, start, end, max_steps, count, count + end))
+
+
+
+                        if label == 0:
+                            labels[start:end:] = 2
+                        else:
+                            labels[start:end:] = 1
+
+
+                        if end == max_steps:
+                            # print('SPEECH END EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps, count))
+                            break
+
+
+                    print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
+
+                    ex = self.make_seq_example(_xs, label, labels,id)
+
+                    tf_writer.write(ex.SerializeToString())
+
+                    # move the count by max_steps captured in this iteration
+                    count += max_steps
+
+                tf_writer.close()
+        return file_count
 
 
     def get_info(self,duration=None):
@@ -186,7 +216,7 @@ if __name__ == '__main__':
     encoder = TFEncoder.Builder().\
         set_src_path(r'data').\
         set_dst_path(r'records').\
-        set_max_steps(600).\
+        set_max_steps(100).\
         build()
 
     # result = encoder.get_info()

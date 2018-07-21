@@ -11,6 +11,7 @@ class TFDecoder(object):
         self.shuffle = builder.shuffle
         self.feature_size = builder.feature_size
         self.label_size = builder.label_size
+        self.seq_id = 0
 
         filelist = [os.path.join(self.path, f) for f in os.listdir(self.path)]
         self.fqueue = tf.train.string_input_producer(filelist,
@@ -23,8 +24,8 @@ class TFDecoder(object):
         key, ex = reader.read(self.fqueue)
         context_features = {
             "len": tf.FixedLenFeature([], dtype=tf.int64),
-            # "id": tf.FixedLenFeature([], dtype=tf.int64),
-            # "seq-id": tf.FixedLenFeature([], dtype=tf.int64),
+            "id": tf.FixedLenFeature([], dtype=tf.int64),
+            "seq-id": tf.FixedLenFeature([], dtype=tf.int64),
             "label": tf.FixedLenFeature([], dtype=tf.int64)
         }
 
@@ -98,7 +99,7 @@ if __name__ == '__main__':
         try:
             while not coord.should_stop():
                 result = sess.run(batch_input)
-                print(result[2])
+                print(result[1],result[2],result[3])
         except tf.errors.OutOfRangeError:
             pass
         finally:

@@ -181,7 +181,7 @@ def init_records():
     encoder = TFEncoder.Builder().\
         set_src_path(r'data').\
         set_dst_path(r'records').\
-        set_max_steps(600).\
+        set_max_steps(100).\
         build()
 
     utils.clean_dir(r'records')

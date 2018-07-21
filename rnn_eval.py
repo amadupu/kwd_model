@@ -41,7 +41,7 @@ num_classes = 3
 num_layers = 2
 model_name = 'alexa'
 is_classifer = False
-model_path = 'seq_model'
+model_path = 'rnn_seq_model'
 
 keep_prob = 1.0
 
