@@ -5,7 +5,7 @@ import os
 # hyper parameters
 
 feature_size=26
-max_steps = 100
+max_steps = 600
 train_epochs = 10
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
@@ -14,7 +14,7 @@ num_classes = 3
 num_layers = 2
 learning_rate = 1e-4
 model_name = 'alexa'
-is_classifer = False
+is_classifer = True
 validation_step = 3
 if is_classifer is True:
     model_path = 'rnn_cls_model'

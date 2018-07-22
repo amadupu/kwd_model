@@ -1,4 +1,4 @@
-import utils
+from utils import *
 import os
 import shutil
 import random
@@ -6,25 +6,34 @@ import numpy as np
 from pydub import AudioSegment
 from pydub.silence import split_on_silence
 from data_encoder import TFEncoder
+from paths import *
 
 total_samples = 1000
 noise_subset = 5
 ratio = 0.8
 noise_thresold = -35
 
-# windows
-if os.name =='nt':
-    noise_path = r'D:\codeathon-18\demand'
-    alexa_path = r'D:\codeathon-18\alexa'
-    mixed_path = r'D:\codeathon-18\mixed'
-    valid_train_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-train'
-    valid_test_path = r'D:\codeathon-18\cv_corpus_v1\cv_corpus_v1\cv-valid-test'
-else:
-    noise_path = r'/home/arun_madupu/projects/corpus/demand'
-    alexa_path = r'/home/arun_madupu/projects/corpus/alexa'
-    mixed_path = r'/home/arun_madupu/projects/corpus/mixed'
-    valid_train_path = r'/home/arun_madupu/projects/corpus/cv_corpus_v1/cv-valid-train'
-    valid_test_path = r'/home/arun_madupu/projects/corpus/cv_corpus_v1/cv-valid-test'
+
+def trim_data():
+
+    clean_dir(alexa_trim_path)
+    for r,d,f in os.walk(alexa_path):
+        for file in f:
+            filename = os.path.join(r, file)
+            sound = AudioSegment.from_file(filename)
+            start_trim = detect_leading_silence(sound)
+            end_trim = detect_leading_silence(sound.reverse())
+
+            duration = len(sound)
+            trimmed_sound = sound[start_trim:duration - end_trim]
+
+            print('Trimmed Audio File: {}  Duration: {}'.format(file,trimmed_sound.duration_seconds))
+
+            if trimmed_sound.duration_seconds > 0.5:
+                trimmed_sound.export(os.path.join(alexa_trim_path,'{}-{}.wav'.format(os.path.basename(r),file)),format='wav')
+            else:
+                print('Discarding Sample: ',os.path.basename(r),file)
+
 
 
 def init_data_sets(num_samples,train_ratio):
@@ -33,7 +42,7 @@ def init_data_sets(num_samples,train_ratio):
     eval_samples = num_samples - train_samples
 
     # clean data path
-    utils.clean_dir('data')
+    clean_dir('data')
 
     train_pos_samples = int(train_samples * 0.5)
     train_neg_samples = train_samples - train_pos_samples
@@ -45,7 +54,7 @@ def init_data_sets(num_samples,train_ratio):
     distribution_ratio = int(train_ratio/(1-train_ratio))
     count  = 0
     print('Copying Alexa Base Files..')
-    for r,d,f in os.walk(alexa_path):
+    for r,d,f in os.walk(alexa_trim_path):
         for file in f:
             count += 1
 
@@ -60,7 +69,8 @@ def init_data_sets(num_samples,train_ratio):
                 target = os.path.join('data',os.path.join('eval', 'positive'))
                 eval_pos_samples -= 1
 
-            # sound = AudioSegment.from_file(filename)
+
+
             # audio_chunks = split_on_silence(sound, min_silence_len=400, silence_thresh=noise_thresold,
             #                                 keep_silence=50)
             #
@@ -116,7 +126,7 @@ def init_data_sets(num_samples,train_ratio):
         filename = file_lst[index]
         filepath = os.path.join(valid_train_path,filename)
         if os.path.splitext(filepath)[-1] == '.mp3':
-            utils.convert(filepath,os.path.join(target,'{}.wav'.format(os.path.splitext(filename)[0])),16000)
+            convert(filepath,os.path.join(target,'{}.wav'.format(os.path.splitext(filename)[0])),16000)
         else:
             shutil.copy(filepath, os.path.join(target,filename))
 
@@ -133,7 +143,7 @@ def init_data_sets(num_samples,train_ratio):
         filename = file_lst[index]
         filepath = os.path.join(valid_test_path,filename)
         if os.path.splitext(filepath)[-1] == '.mp3':
-            utils.convert(filepath,os.path.join(target,'{}.wav'.format(os.path.splitext(filename)[0])),16000)
+            convert(filepath,os.path.join(target,'{}.wav'.format(os.path.splitext(filename)[0])),16000)
         else:
             shutil.copy(filepath, os.path.join(target,filename))
 
@@ -141,7 +151,7 @@ def perform_audio_mixing(file1,file2,target):
     sound1 = AudioSegment.from_file(file1)
     sound2 = AudioSegment.from_file(file2)
 
-    combined = sound1.overlay(sound2)
+    combined = sound1.overlay(sound2,gain_during_overlay=-20)
 
     combined.export(target, format='wav')
 
@@ -153,7 +163,7 @@ def perform_audio_mixing(file1,file2,target):
 
 def create_mixed_data():
     os.makedirs(mixed_path, exist_ok=True)
-    utils.clean_dir(mixed_path)
+    clean_dir(mixed_path)
     noise_files = list()
     for r,d,f in os.walk(noise_path):
         for fs in f:
@@ -164,7 +174,7 @@ def create_mixed_data():
     count1 = 0
     count2 = 0
     count3 = 0
-    for r,d,f in os.walk(alexa_path):
+    for r,d,f in os.walk(alexa_trim_path):
         for fs in f:
             count1 += 1
             indices = np.random.randint(0,len(noise_files),noise_subset)
@@ -172,7 +182,7 @@ def create_mixed_data():
             for fn in n_files:
                 count2 += 1
                 count3 += 1
-                target = os.path.join(mixed_path,'{}.wav'.format(utils.get_file_timestamp()))
+                target = os.path.join(mixed_path,'{}.wav'.format(get_file_timestamp()))
                 perform_audio_mixing(os.path.join(r,fs),fn,target)
                 print('Processing: {} {} {}'.format(count1,count2,count3))
             count2 = 0
@@ -181,16 +191,18 @@ def init_records():
     encoder = TFEncoder.Builder().\
         set_src_path(r'data').\
         set_dst_path(r'records').\
-        set_max_steps(100).\
+        set_max_steps(600).\
         build()
 
-    utils.clean_dir(r'records')
+    clean_dir(r'records')
     
     result = encoder.encode()
 
     print(result)
 
 if __name__ == '__main__':
+    print('TRIMMING AUDIO FILES')
+    trim_data()
     print('CREATING NOISE VERSION OF SPEECH SAMPLES')
     create_mixed_data()
     print('INITIALIZING DATA SETS')

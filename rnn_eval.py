@@ -9,6 +9,8 @@ from pydub.silence import split_on_silence
 import utils
 import struct
 from features import get_features
+from features import parse_audio_file
+from paths import *
 
 modeldir = r'D:\VM\vmshare\speech_recognition\pocketsphinx\model'
 datadir = r'D:\VM\vmshare\speech_recognition\pocketsphinx\test\data'
@@ -41,7 +43,7 @@ num_classes = 3
 num_layers = 2
 model_name = 'alexa'
 is_classifer = False
-model_path = 'rnn_seq_model'
+model_path = 'seq_model'
 
 keep_prob = 1.0
 
@@ -70,8 +72,79 @@ model = RNNModel.Builder().set_max_steps(max_steps). \
 
 model.init_graph()
 
+data = b''
+batch_count = 15
+count = 0
+
+
+def evaluator():
+    for r,d,files in os.walk(alexa_path):
+        for f in files:
+            filename = os.path.join(r,f)
+            features,_ = parse_audio_file(filename)
+            sequence_length = len(features)
+            delta_length = sequence_length % max_steps
+            xs = np.pad(features, [[0, max_steps - delta_length], [0, 0]], mode='constant')
+            # steps = np.ones(len(xs)) * 100
+            # steps[-1] = delta_length
+            xs = np.reshape(xs,[-1,max_steps,feature_size])
+            steps = np.ones(np.shape(xs)[0],dtype=np.int64) * 100
+            steps[-1] = delta_length
+            # xs = np.transpose(xs,(1,0,2))
+            print('file: {} input shape: {} steps: {}'.format(f,np.shape(xs),steps))
+            score, logits = model.test(xs, steps)
+
+            logits = np.reshape(logits,[max_steps,-1,3])
+            logits = np.transpose(logits,(1,0,2))
+            logits = np.reshape(logits,[-1,3])
+            logits = np.mean(logits,axis=0)
+
+            score = np.reshape(score,[max_steps,-1])
+            score = np.transpose(score,(1,0))
+            score = np.reshape(score,[-1])
+            print(logits)
+
+
+
+# evaluator()
 def callback(in_data, frame_count, time_info, status):
+    global data, count
     global in_speech, utterance, is_in_speech, chunk_count, model
+
+    count += 1
+
+    outstream.write(in_data)
+    if count % batch_count != 0:
+        data += in_data
+        return (None, pyaudio.paContinue)
+
+    data += in_data
+
+
+
+    fmt = '<%ih' % (len(data) / sample_width)
+    signal = np.array(struct.unpack_from(fmt, data))
+    xs = get_features(signal, frame_rate, True)
+    steps = len(xs)
+    xs = xs[:max_steps]
+    sequence_length = len(xs)
+
+
+    print('Sequence Length: {}  in_data: {} data: {}'.format(sequence_length,len(in_data),len(data)))
+    data = b''
+    xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+
+    input = np.reshape(xs, [-1, max_steps, feature_size])
+
+    input = np.transpose(input,(1,0,2))
+
+    score,logits = model.test(input, [sequence_length])
+
+    logits = np.mean(logits,axis=0)
+    # print(score)
+    print(logits)
+
+
 
     decoder.process_raw(in_data, False, False)
 
@@ -108,24 +181,24 @@ def callback(in_data, frame_count, time_info, status):
 
             print('segment: {} score: {} audio chunks: {}'.format(chunk_count,score,len(audio_chunks)))
 
-            # for i, chunk in enumerate(audio_chunks):
-            #     data = chunk.raw_data
-            #     fmt = '<%ih' % (len(data) / sample_width)
-            #     signal = np.array(struct.unpack_from(fmt, data))
-            #     xs = get_features(signal,frame_rate,True)
-            #     steps = len(xs)
-            #     xs = xs[:max_steps]
-            #     sequence_length = len(xs)
-            #     xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
-            #     score = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
-            #
-            #     print('segment: {} {} score: {}'.format(chunk_count,i,score))
-            #
-            #
-            #
-            #     out_file = os.path.join('chunks',
-            #                             'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
-            #     chunk.export(out_file, format='raw')
+            for i, chunk in enumerate(audio_chunks):
+                data = chunk.raw_data
+                fmt = '<%ih' % (len(data) / sample_width)
+                signal = np.array(struct.unpack_from(fmt, data))
+                xs = get_features(signal,frame_rate,True)
+                steps = len(xs)
+                xs = xs[:max_steps]
+                sequence_length = len(xs)
+                xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+                score = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
+
+                print('segment: {} {} score: {}'.format(chunk_count,i,score))
+
+
+
+                out_file = os.path.join('chunks',
+                                        'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
+                chunk.export(out_file, format='raw')
 
 
 
@@ -136,10 +209,15 @@ def callback(in_data, frame_count, time_info, status):
 
     return (None, pyaudio.paContinue)
 
+
+
+
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt16, channels=channels, rate=frame_rate, input=True, frames_per_buffer=frames_per_buffer,stream_callback=callback)
+outstream = p.open(format=pyaudio.paInt16, channels=channels, rate=frame_rate, output=True, frames_per_buffer=frames_per_buffer)
 
 stream.start_stream()
+outstream.start_stream()
 while True:
     time.sleep(1)
 

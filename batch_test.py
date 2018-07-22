@@ -10,7 +10,7 @@ if __name__ == '__main__':
         set_shuffle_status(False). \
         build()
 
-    batch_input = tf.train.batch(tensors=decoder.dequeue(), batch_size=1,
+    batch_input = tf.train.batch(tensors=decoder.dequeue(True), batch_size=10,
                                                   dynamic_pad=True,
                                                   allow_smaller_final_batch=True)
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
                 # print(result[0], result[1], result[2], result[3])
                 # print(np.shape(result[4]),np.shape(result[5]))
-                print(result[0],result[1],result[2],result[3],np.shape(result[4]), np.shape(result[5]))
+                print(result[0],np.shape(result[1]),np.shape(result[2]))
         except tf.errors.OutOfRangeError:
             pass
         finally:

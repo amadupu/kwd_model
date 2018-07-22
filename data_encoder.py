@@ -85,56 +85,60 @@ class TFEncoder(object):
                 while count < steps:
                     _xs = xs[count  : count + self.max_steps]
                     max_steps = len(_xs)
-                    labels = np.zeros(max_steps,dtype=np.int64)
+                    labels = np.ones(max_steps,dtype=np.int64)
                     label = 0
                     if child_dir == 'positive':
                         label = 1
+                    else:
+                        labels = labels * 0
 
-                    for start, end in speech_ranges:
-                        print('SPEECH: filename : {} {} {}'.format(fname, start, end))
-
-                        start = (int)(start / 10)
-                        end = (int)(end / 10)
-
-                        print('SPEECH WINDOW START: start: {} end: {} count: {}'.format(start,end,count))
-
-
-                        if start < count:
-                            if count < end:
-                                start = count
-                            else:
-                                print('SPEECH WINDOW IGNORE: start: {} end: {} count: {}',start,end,count)
-                                continue
-
-                        print('SPEECH WINDOW END: start: {} end: {} count: {}'.format(start, end, count))
-
-                        # adjust start and end to relative reference
-                        start -= count
-                        end -= count
-
-                        print('SPEECH RELATIVE INDEX: start: {} end: {} count: {}', start, end, count)
-
-                        # if start is falling outside the window we need to break
-                        if start >= max_steps:
-                            print('SPEECH START EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps,count))
-                            break
-
-                        # if end is falling outside the window we need truncate and capture the leftover offset for next iteration
-                        if end > max_steps:
-                            end = max_steps
-                            print('SPEECH END LIMIT: filename : fname: {} start: {} end: {} max_steps: {} count: {} end_mark: {}'.format(fname, start, end, max_steps, count, count + end))
-
-
-
-                        if label == 0:
-                            labels[start:end:] = 2
-                        else:
-                            labels[start:end:] = 1
-
-
-                        if end == max_steps:
-                            # print('SPEECH END EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps, count))
-                            break
+                    # for start, end in speech_ranges:
+                    #     print('SPEECH: filename : {} {} {}'.format(fname, start, end))
+                    #
+                    #     start = (int)(start / 10)
+                    #     end = (int)(end / 10)
+                    #
+                    #     print('SPEECH WINDOW START: start: {} end: {} count: {}'.format(start,end,count))
+                    #
+                    #
+                    #     if start < count:
+                    #         if count < end:
+                    #             start = count
+                    #         else:
+                    #             print('SPEECH WINDOW IGNORE: start: {} end: {} count: {}',start,end,count)
+                    #             continue
+                    #
+                    #     print('SPEECH WINDOW END: start: {} end: {} count: {}'.format(start, end, count))
+                    #
+                    #     # adjust start and end to relative reference
+                    #     start -= count
+                    #     end -= count
+                    #
+                    #     print('SPEECH RELATIVE INDEX: start: {} end: {} count: {}', start, end, count)
+                    #
+                    #     # if start is falling outside the window we need to break
+                    #     if start >= max_steps:
+                    #         print('SPEECH START EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps,count))
+                    #         break
+                    #
+                    #     # if end is falling outside the window we need truncate and capture the leftover offset for next iteration
+                    #     if end > max_steps:
+                    #         end = max_steps
+                    #         print('SPEECH END LIMIT: filename : fname: {} start: {} end: {} max_steps: {} count: {} end_mark: {}'.format(fname, start, end, max_steps, count, count + end))
+                    #
+                    #
+                    #
+                    #     if label == 0:
+                    #         labels[start:end:] = 2
+                    #     else:
+                    #         labels[::] = 1
+                    #
+                    #
+                    #
+                    #
+                    #     if end == max_steps:
+                    #         # print('SPEECH END EXCEED: filename : fname: {} start: {} end: {} max_steps: {} count: {}'.format(fname, start, end, max_steps, count))
+                    #         break
 
 
                     print('SPEECH LABELS: filename : {} {}'.format(fname, labels))
@@ -145,6 +149,7 @@ class TFEncoder(object):
 
                     # move the count by max_steps captured in this iteration
                     count += max_steps
+
 
                 tf_writer.close()
         return file_count
@@ -216,16 +221,16 @@ if __name__ == '__main__':
     encoder = TFEncoder.Builder().\
         set_src_path(r'data').\
         set_dst_path(r'records').\
-        set_max_steps(100).\
+        set_max_steps(600).\
         build()
 
-    # result = encoder.get_info()
+    result = encoder.get_info()
     # result = encoder.xencode(0,(2000, 5500))
 
-    utils.clean_dir(r'records')
-    result = encoder.encode()
-
-    print(result)
+    # utils.clean_dir(r'records')
+    # result = encoder.encode()
+    #
+    # print(result)
 
     # encoder = TFEncoder.Builder().\
     #     set_src_path('data/eval').\

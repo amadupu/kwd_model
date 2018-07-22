@@ -86,7 +86,7 @@ if __name__ == '__main__':
         set_shuffle_status(True).\
         build()
 
-    batch_input = decoder.dequeue(False)
+    batch_input = decoder.dequeue(True)
 
     l_init = tf.global_variables_initializer()
     g_init = tf.local_variables_initializer()
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         try:
             while not coord.should_stop():
                 result = sess.run(batch_input)
-                print(result[1],result[2],result[3])
+                print(result[0],np.shape(result[1]),result[2])
         except tf.errors.OutOfRangeError:
             pass
         finally:
