@@ -1,3 +1,3 @@
-model_checkpoint_path: "alexa-930"
-all_model_checkpoint_paths: "alexa-920"
-all_model_checkpoint_paths: "alexa-930"
+model_checkpoint_path: "alexa-180"
+all_model_checkpoint_paths: "alexa-170"
+all_model_checkpoint_paths: "alexa-180"
