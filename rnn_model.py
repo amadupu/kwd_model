@@ -62,7 +62,7 @@ class RNNModel(object):
                         self.global_step = tf.Variable(0, name="global_step", trainable=False)
 
 
-                self.xt = tf.transpose(self.xs,perm=[1,0,2])
+                # self.xt = tf.transpose(self.xs,perm=[1,0,2])
 
                 self.keepprob = tf.placeholder(tf.float32, [], name='keeprob')
 
@@ -76,10 +76,10 @@ class RNNModel(object):
                         Bin = self.bias_variable([self.cell_size], name='B_in')
                         if self.oper_mode == RNNModel.OperMode.OPER_MODE_TRAIN:
                             tf.summary.histogram('input_layer/Biases', Bin)
-                    xs = tf.reshape(self.xt,[-1,self.feature_size])
+                    xs = tf.reshape(self.xs,[-1,self.feature_size])
                     rnn_inputs = tf.add(tf.matmul(xs,Win),Bin)
                     rnn_inputs = tf.nn.dropout(rnn_inputs,keep_prob=self.keepprob)
-                    self.rnn_inputs = tf.reshape(rnn_inputs,[self.max_steps,-1,self.cell_size],name='rnn_inputs')
+                    self.rnn_inputs = tf.reshape(rnn_inputs,[-1, self.max_steps,self.cell_size],name='rnn_inputs')
 
                 with tf.name_scope('rnn_layer'):
                     if self.cell_type == RNNModel.CellType.RNN_CEL_TYPE_LSTM:
@@ -96,7 +96,7 @@ class RNNModel(object):
 
                     cell = tf.nn.rnn_cell.DropoutWrapper(cell,output_keep_prob=self.keepprob)
 
-                    batch_size = tf.shape(self.xt)[1]
+                    batch_size = tf.shape(self.xs)[0]
 
                     self.tf_batch_size = batch_size
 
@@ -104,7 +104,7 @@ class RNNModel(object):
 
 
 
-                    rnn_outputs, self.final_state = tf.nn.dynamic_rnn(cell,self.rnn_inputs,sequence_length=self.steps, initial_state=self.state,time_major=True)
+                    rnn_outputs, self.final_state = tf.nn.dynamic_rnn(cell,self.rnn_inputs,sequence_length=self.steps, initial_state=self.state,time_major=False)
                     rnn_outputs = tf.nn.dropout(rnn_outputs, keep_prob=self.keepprob,name='rnn_outputs')
 
 
@@ -124,11 +124,11 @@ class RNNModel(object):
 
                     if self.is_classifier is True:
                         # get last rnn output
-                        # idx = tf.range(tf.cast(batch_size,tf.int64))
-                        # idx = idx * tf.cast(tf.shape(tf.cast(rnn_outputs,tf.int64))[1],tf.int64)
-                        # idx = idx + (self.steps - 1)
-                        # rnn_outputs = tf.gather(tf.reshape(rnn_outputs, [-1, self.cell_size]), idx)
-                        rnn_outputs = rnn_outputs[-1]
+                        idx = tf.range(tf.cast(batch_size,tf.int64))
+                        idx = idx * tf.cast(tf.shape(tf.cast(rnn_outputs,tf.int64))[1],tf.int64)
+                        idx = idx + (self.steps - 1)
+                        rnn_outputs = tf.gather(tf.reshape(rnn_outputs, [-1, self.cell_size]), idx)
+                        # rnn_outputs = rnn_outputs[-1]
                     else:
                         rnn_outputs = tf.reshape(rnn_outputs, [-1, self.cell_size])
 
@@ -143,7 +143,7 @@ class RNNModel(object):
                     self.logits = tf.nn.softmax(logits)
 
                     self.predictions = tf.argmax(self.logits,axis=-1)
-                    self.flat_labels = tf.reshape(tf.transpose(self.ys), [-1])
+                    self.flat_labels = tf.reshape(self.ys, [-1])
 
 
                 with tf.name_scope('accuracy'):
@@ -153,7 +153,7 @@ class RNNModel(object):
                 with tf.name_scope('cross_entropy'):
 
                     if self.is_classifier:
-                        self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=tf.transpose(self.ys)))
+                        self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=self.ys))
                     else:
                         # seq2seq loss
                         # self.seq_logits =  tf.unstack(tf.reshape(logits, [-1,self.max_steps,self.num_classes]),axis=1)
@@ -163,7 +163,7 @@ class RNNModel(object):
 
                         self.seq_logits =  tf.unstack(tf.reshape(logits, [self.max_steps,-1,self.num_classes]),axis=0)
                         self.seq_lables =  tf.unstack(tf.transpose(self.ys), num=self.max_steps, axis=0)
-                        self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(self.xt),axis=-1)),num=self.max_steps, axis=0)
+                        self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(self.xs),axis=-1)),num=self.max_steps, axis=0)
 
                         # self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.flat_labels))
                         self.loss = tf.contrib.legacy_seq2seq.sequence_loss(self.seq_logits,self.seq_lables,self.seq_weights,name='loss')
