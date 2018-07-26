@@ -83,28 +83,48 @@ class RNNModel(object):
 
                 with tf.name_scope('rnn_layer'):
                     if self.cell_type == RNNModel.CellType.RNN_CEL_TYPE_LSTM:
-                        cell = tf.nn.rnn_cell.LSTMCell(self.cell_size, state_is_tuple=True,name='LSTMCell')
+                        cell_fw = tf.nn.rnn_cell.LSTMCell(self.cell_size, state_is_tuple=True,name='LSTMCell')
+                        cell_bw = tf.nn.rnn_cell.LSTMCell(self.cell_size, state_is_tuple=True, name='LSTMCell')
                     else:
-                        cell = tf.nn.rnn_cell.GRUCell(self.cell_size,name='GRUCell')
+                        cell_fw = tf.nn.rnn_cell.GRUCell(self.cell_size,name='GRUCell')
+                        cell_bw = tf.nn.rnn_cell.GRUCell(self.cell_size, name='GRUCell')
 
-                    cell = tf.nn.rnn_cell.DropoutWrapper(cell,input_keep_prob=self.keepprob)
+                    cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw,input_keep_prob=self.keepprob)
+                    cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=self.keepprob)
 
                     if self.cell_type == RNNModel.CellType.RNN_CEL_TYPE_LSTM:
-                        cell = tf.nn.rnn_cell.MultiRNNCell([cell]*self.num_layers, state_is_tuple=True)
+                        cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw]*self.num_layers, state_is_tuple=True)
+                        cell_bw = tf.nn.rnn_cell.MultiRNNCell([cell_bw] * self.num_layers, state_is_tuple=True)
                     else:
-                        cell = tf.nn.rnn_cell.MultiRNNCell([cell] * self.num_layers)
+                        cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw] * self.num_layers)
+                        cell_bw = tf.nn.rnn_cell.MultiRNNCell([cell_bw] * self.num_layers)
 
-                    cell = tf.nn.rnn_cell.DropoutWrapper(cell,output_keep_prob=self.keepprob)
+                    cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw,output_keep_prob=self.keepprob)
+                    cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob=self.keepprob)
 
                     batch_size = tf.shape(self.xs)[0]
 
                     self.tf_batch_size = batch_size
 
-                    self.state = cell.zero_state(batch_size, tf.float32)
+                    self.state_fw = cell_fw.zero_state(batch_size, tf.float32)
+                    self.state_bw = cell_bw.zero_state(batch_size, tf.float32)
+
+
+                    outputs, self.final_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw,
+                                                                                         cell_bw=cell_bw,
+                                                                                         inputs=self.rnn_inputs,
+                                                                                         sequence_length=self.steps,
+                                                                                         initial_state_fw=self.state_fw,
+                                                                                         initial_state_bw=self.state_bw,
+                                                                                         time_major=False )
+
+                    rnn_outputs = tf.concat(outputs,2)
 
 
 
-                    rnn_outputs, self.final_state = tf.nn.dynamic_rnn(cell,self.rnn_inputs,sequence_length=self.steps, initial_state=self.state,time_major=False)
+                    #
+                    # rnn_outputs, self.final_state = tf.nn.dynamic_rnn(cell_fw,self.rnn_inputs,sequence_length=self.steps,
+                    #                                                   initial_state=self.state_fw,time_major=False)
                     rnn_outputs = tf.nn.dropout(rnn_outputs, keep_prob=self.keepprob,name='rnn_outputs')
 
 

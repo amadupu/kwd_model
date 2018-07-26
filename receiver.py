@@ -38,7 +38,10 @@ def receive_thread():
     # print('RECV THREAD: Staring Play Thread')
     pthread.start()
     while True:
-        data, addr = psock.recvfrom(6000)  # buffer size is 1024 bytes
+        try:
+            data, addr = psock.recvfrom(6000)  # buffer size is 1024 bytes
+        except Exception as err:
+            print(err)
         # print('RECV THREAD: Posting to play thread')
         pqueue.put(data, block=False)
 
@@ -64,7 +67,7 @@ def child_process():
         seg = seg.set_frame_rate(44100)
         print("UPSAMP: Post upsampling:", len(data), len(seg.raw_data))
 
-        sock.sendto(seg.raw_data,('172.24.150.50',5001))
+        sock.sendto(seg.raw_data,('172.24.150.50',5002))
 
 
 

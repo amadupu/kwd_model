@@ -39,11 +39,11 @@ max_steps = 600
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
 batch_size = 1
-num_classes = 3
+num_classes = 2
 num_layers = 2
 model_name = 'alexa'
-is_classifer = False
-model_path = 'seq_model'
+is_classifer = True
+model_path = 'cls_model'
 
 keep_prob = 1.0
 
@@ -111,38 +111,38 @@ def callback(in_data, frame_count, time_info, status):
     global data, count
     global in_speech, utterance, is_in_speech, chunk_count, model
 
-    count += 1
+    # count += 1
 
-    outstream.write(in_data)
-    if count % batch_count != 0:
-        data += in_data
-        return (None, pyaudio.paContinue)
-
-    data += in_data
-
-
-
-    fmt = '<%ih' % (len(data) / sample_width)
-    signal = np.array(struct.unpack_from(fmt, data))
-    xs = get_features(signal, frame_rate, True)
-    steps = len(xs)
-    xs = xs[:max_steps]
-    sequence_length = len(xs)
-
-
-    print('Sequence Length: {}  in_data: {} data: {}'.format(sequence_length,len(in_data),len(data)))
-    data = b''
-    xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
-
-    input = np.reshape(xs, [-1, max_steps, feature_size])
-
-    input = np.transpose(input,(1,0,2))
-
-    score,logits = model.test(input, [sequence_length])
-
-    logits = np.mean(logits,axis=0)
-    # print(score)
-    print(logits)
+    # outstream.write(in_data)
+    # if count % batch_count != 0:
+    #     data += in_data
+    #     return (None, pyaudio.paContinue)
+    #
+    # data += in_data
+    #
+    #
+    #
+    # fmt = '<%ih' % (len(data) / sample_width)
+    # signal = np.array(struct.unpack_from(fmt, data))
+    # xs = get_features(signal, frame_rate, True)
+    # steps = len(xs)
+    # xs = xs[:max_steps]
+    # sequence_length = len(xs)
+    #
+    #
+    # print('Sequence Length: {}  in_data: {} data: {}'.format(sequence_length,len(in_data),len(data)))
+    # data = b''
+    # xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+    #
+    # input = np.reshape(xs, [-1, max_steps, feature_size])
+    #
+    # input = np.transpose(input,(1,0,2))
+    #
+    # score,logits = model.test(input, [sequence_length])
+    #
+    # logits = np.mean(logits,axis=0)
+    # # print(score)
+    # print(logits)
 
 
 
@@ -169,17 +169,18 @@ def callback(in_data, frame_count, time_info, status):
             audio_chunks = split_on_silence(audio_segment, min_silence_len=min_silence_len, silence_thresh=silence_thresold, keep_silence=keep_silence)
 
 
-            data = audio_segment.raw_data
-            fmt = '<%ih' % (len(data) / sample_width)
-            signal = np.array(struct.unpack_from(fmt, data))
-            xs = get_features(signal, frame_rate, True)
-            steps = len(xs)
-            xs = xs[:max_steps]
-            sequence_length = len(xs)
-            xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
-            score = model.test(np.reshape(xs, [-1, max_steps, feature_size]), [sequence_length])
-
-            print('segment: {} score: {} audio chunks: {}'.format(chunk_count,score,len(audio_chunks)))
+            # data = audio_segment.raw_data
+            # fmt = '<%ih' % (len(data) / sample_width)
+            # signal = np.array(struct.unpack_from(fmt, data))
+            # xs = get_features(signal, frame_rate, True)
+            # steps = len(xs)
+            # xs = xs[:max_steps]
+            # sequence_length = len(xs)
+            # xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
+            # pred,logits = model.test(np.reshape(xs, [-1, max_steps, feature_size]), [sequence_length])
+            #
+            # print(pred)
+            # print(logits)
 
             for i, chunk in enumerate(audio_chunks):
                 data = chunk.raw_data
@@ -190,15 +191,20 @@ def callback(in_data, frame_count, time_info, status):
                 xs = xs[:max_steps]
                 sequence_length = len(xs)
                 xs = np.pad(xs, [[0, max_steps - sequence_length], [0, 0]], mode='constant')
-                score = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
+                score,logits = model.test(np.reshape(xs,[-1,max_steps,feature_size]),[sequence_length])
 
-                print('segment: {} {} score: {}'.format(chunk_count,i,score))
+                if score[0] == 1:
+                    print('Detected')
+                else:
+                    print('Not Detected')
+
+                # print('segment: {} {} score: {}'.format(chunk_count,i,score))
 
 
-
-                out_file = os.path.join('chunks',
-                                        'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
-                chunk.export(out_file, format='raw')
+                #
+                # out_file = os.path.join('chunks',
+                #                         'segment-{}-{}-{}-{}.raw'.format(chunk_count, i,steps,score))
+                # chunk.export(out_file, format='raw')
 
 
 
