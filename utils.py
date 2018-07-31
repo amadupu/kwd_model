@@ -54,3 +54,20 @@ def detect_leading_silence(sound, silence_threshold=-25.0, chunk_size=10):
 
     return trim_ms
 
+
+
+# input= [  1.   2.   3.   4.   5.   6.   7.   8.   9.  10.]
+# output= [[ 1.  2.  3.  4.  5.]
+#  [ 2.  3.  4.  5.  6.]
+#  [ 3.  4.  5.  6.  7.]
+#  [ 4.  5.  6.  7.  8.]
+#  [ 5.  6.  7.  8.  9.]]
+
+# import tensorflow as tf
+# import numpy as np
+# def breakup(sess, x, lookback_len):
+#   N = sess.run(tf.size(x))
+#   windows = [tf.slice(x, [b], [lookback_len]) for b in xrange(0, N-lookback_len)]
+#   windows = tf.stack(windows)
+#   return windows
+

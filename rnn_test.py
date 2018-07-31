@@ -9,13 +9,20 @@ max_steps = 600
 train_epochs = 10
 cell_type = RNNModel.CellType.RNN_CELL_TYPE_GRU
 cell_size = 512
-batch_size = 100
+batch_size = 50
 num_classes = 2
-num_layers = 2
+num_layers = 3
 learning_rate = 1e-4
 model_name = 'alexa'
-is_classifer = True
-validation_step = 3
+
+state_feeback = False # may cause an exception when processing the last batch
+
+bi_directional=True
+validation_step = 300
+is_classifer = False
+
+time_major = False # deprecated
+
 if is_classifer is True:
     model_path = 'rnn_cls_model'
     logs_path = 'rnn_cls_logs'
@@ -36,13 +43,16 @@ if __name__ == '__main__':
             set_epochs(1). \
             set_cell_type(cell_type). \
             set_cell_size(cell_size). \
-            set_batch_size(10). \
+            set_batch_size(batch_size). \
             set_class_size(num_classes). \
             set_layer_size(num_layers). \
             set_model_path(model_path). \
             set_model_name(model_name).\
             set_logs_path(logs_path). \
+            set_bi_directional(bi_directional). \
             set_classifer_status(is_classifer). \
+            set_state_feedback(state_feeback). \
+            set_time_major(time_major).\
             set_oper_mode(RNNModel.OperMode.OPER_MODE_EVAL). \
             build()
         model.evaluate(curr_step=curr_step)
@@ -71,6 +81,9 @@ if __name__ == '__main__':
         set_model_name(model_name). \
         set_logs_path(logs_path).\
         set_eval_fn(evaluator). \
+        set_time_major(time_major). \
+        set_state_feedback(state_feeback). \
+        set_bi_directional(bi_directional) .\
         set_classifer_status(is_classifer).\
         set_oper_mode(RNNModel.OperMode.OPER_MODE_TRAIN). \
         set_validation_step(validation_step).\

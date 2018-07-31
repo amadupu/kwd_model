@@ -10,19 +10,22 @@ if __name__ == '__main__':
         set_shuffle_status(False). \
         build()
 
-    batch_input = tf.train.batch(tensors=decoder.dequeue(True), batch_size=10,
+    batch_input = tf.train.batch(tensors=decoder.dequeue(False), batch_size=2,
                                                   dynamic_pad=True,
                                                   allow_smaller_final_batch=True)
 
-    # def func1():
-    #     delta = 50 - tf.shape(batch_input[1])[1]
-    #     paddings = tf.pad(batch_input[1],tf.constant([[0,0],[0,delta],[0,0]]),'CONSTANT')
-    #     return paddings
-    #
-    # def func2():
-    #     return batch_input[1]
-    #
-    # r = tf.cond(tf.less(tf.cast(tf.shape(batch_input[1])[1],tf.float32),tf.constant(50,tf.float32)),func1, func2)
+
+
+
+    xs = batch_input[1]
+
+    ys = batch_input[2]
+
+    batch_size = tf.shape(xs)[0]
+
+
+    x_unpack = tf.unpack(xs,axis=1)
+
 
     l_init = tf.global_variables_initializer()
     g_init = tf.local_variables_initializer()
@@ -36,11 +39,11 @@ if __name__ == '__main__':
         threads = tf.train.start_queue_runners(sess,coord)
         try:
             while not coord.should_stop():
-                result = sess.run(batch_input)
+                result = sess.run([xs,x_unpack])
 
-                # print(result[0], result[1], result[2], result[3])
+                print(np.shape(result[0]), np.shape(result[1]))
                 # print(np.shape(result[4]),np.shape(result[5]))
-                print(result[0],np.shape(result[1]),np.shape(result[2]))
+
         except tf.errors.OutOfRangeError:
             pass
         finally:

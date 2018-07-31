@@ -40,8 +40,8 @@ class TFEncoder(object):
         fl_tokens = ex.feature_lists.feature_list['tokens']
         fl_labels = ex.feature_lists.feature_list['labels']
 
-        # labels = np.ones([len(xs)],dtype=np.int64) * ys
-        # labels = np.pad(labels,[[0,self.max_steps - sequence_length]],mode='constant' )
+        labels = np.ones([len(xs)],dtype=np.int64) * ys
+        labels = np.pad(labels,[[0,self.max_steps - sequence_length]],mode='constant' )
 
         for token, label in zip(xs, labels):
             if np.ndim(token) == 0:
@@ -217,6 +217,7 @@ class TFEncoder(object):
 if __name__ == '__main__':
 
 
+    utils.clean_dir(r'records')
 
     encoder = TFEncoder.Builder().\
         set_src_path(r'data').\
@@ -224,7 +225,7 @@ if __name__ == '__main__':
         set_max_steps(600).\
         build()
 
-    result = encoder.get_info()
+    result = encoder.encode()
     # result = encoder.xencode(0,(2000, 5500))
 
     # utils.clean_dir(r'records')

@@ -44,7 +44,7 @@ num_layers = 2
 model_name = 'alexa'
 is_classifer = True
 model_path = 'cls_model'
-
+time_major = False
 keep_prob = 1.0
 
 config = Decoder.default_config()
@@ -66,6 +66,7 @@ model = RNNModel.Builder().set_max_steps(max_steps). \
     set_layer_size(num_layers). \
     set_model_path(model_path). \
     set_model_name(model_name). \
+    set_time_major(time_major).\
     set_classifer_status(is_classifer). \
     set_oper_mode(RNNModel.OperMode.OPER_MODE_TEST). \
     build()

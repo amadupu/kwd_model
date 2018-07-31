@@ -29,6 +29,9 @@ class RNNModel(object):
         self.model_path = builder.model_path
         self.model_name = builder.model_name
         self.is_classifier = builder.is_classifier
+        self.is_timemajor = builder.is_timemajor
+        self.is_bidirectional = builder.is_bidirectional
+        self.is_state_feedback = builder.is_state_feedback
         self.build_graph()
 
     def build_graph(self):
@@ -56,13 +59,21 @@ class RNNModel(object):
                             set_path(self.read_path). \
                             set_shuffle_status(True). \
                             build()
-                        self.steps, self.xs, self.ys = tf.train.batch(tensors=decoder.dequeue(self.is_classifier), batch_size=self.batch_size,
+                        self.steps, self.xs , self.ys = tf.train.batch(tensors=decoder.dequeue(self.is_classifier), batch_size=self.batch_size,
                                                                   dynamic_pad=True,
-                                                                  allow_smaller_final_batch=False,name='batch_processor')
+                                                                  allow_smaller_final_batch=True,name='batch_processor')
                         self.global_step = tf.Variable(0, name="global_step", trainable=False)
 
 
-                # self.xt = tf.transpose(self.xs,perm=[1,0,2])
+                xs = self.xs
+                ys = self.ys
+
+                # if self.is_timemajor is True:
+                #     xs = tf.transpose(self.xs,perm=[1,0,2])
+                #     ys = tf.transpose(self.ys)
+                # else:
+                #     xs = self.xs
+                #     ys = self.ys
 
                 self.keepprob = tf.placeholder(tf.float32, [], name='keeprob')
 
@@ -76,10 +87,24 @@ class RNNModel(object):
                         Bin = self.bias_variable([self.cell_size], name='B_in')
                         if self.oper_mode == RNNModel.OperMode.OPER_MODE_TRAIN:
                             tf.summary.histogram('input_layer/Biases', Bin)
-                    xs = tf.reshape(self.xs,[-1,self.feature_size])
-                    rnn_inputs = tf.add(tf.matmul(xs,Win),Bin)
+
+
+                    x = tf.reshape(xs,[-1,self.feature_size])
+
+
+                    rnn_inputs = tf.add(tf.matmul(x,Win),Bin)
+                    # self.input_test = rnn_inputs
+
                     rnn_inputs = tf.nn.dropout(rnn_inputs,keep_prob=self.keepprob)
-                    self.rnn_inputs = tf.reshape(rnn_inputs,[-1, self.max_steps,self.cell_size],name='rnn_inputs')
+
+                    self.rnn_inputs = tf.reshape(rnn_inputs, [-1, tf.shape(self.xs)[1], self.cell_size],
+                                                 name='rnn_inputs')
+
+                    # if self.is_timemajor is True:
+                    #     self.rnn_inputs = tf.reshape(rnn_inputs,[tf.shape(self.xs)[1],-1,self.cell_size],name='rnn_inputs')
+                    # else:
+                    #     self.rnn_inputs = tf.reshape(rnn_inputs, [-1, tf.shape(self.xs)[1], self.cell_size],
+                    #                                  name='rnn_inputs')
 
                 with tf.name_scope('rnn_layer'):
                     if self.cell_type == RNNModel.CellType.RNN_CEL_TYPE_LSTM:
@@ -93,7 +118,7 @@ class RNNModel(object):
                     cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, input_keep_prob=self.keepprob)
 
                     if self.cell_type == RNNModel.CellType.RNN_CEL_TYPE_LSTM:
-                        cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw]*self.num_layers, state_is_tuple=True)
+                        cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw] * self.num_layers, state_is_tuple=True)
                         cell_bw = tf.nn.rnn_cell.MultiRNNCell([cell_bw] * self.num_layers, state_is_tuple=True)
                     else:
                         cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw] * self.num_layers)
@@ -104,13 +129,15 @@ class RNNModel(object):
 
                     batch_size = tf.shape(self.xs)[0]
 
-                    self.tf_batch_size = batch_size
+                    # self.tf_batch_size = batch_size
 
                     self.state_fw = cell_fw.zero_state(batch_size, tf.float32)
                     self.state_bw = cell_bw.zero_state(batch_size, tf.float32)
 
 
-                    outputs, self.final_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw,
+                    if self.is_bidirectional is True:
+
+                        outputs, self.final_state = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw,
                                                                                          cell_bw=cell_bw,
                                                                                          inputs=self.rnn_inputs,
                                                                                          sequence_length=self.steps,
@@ -118,13 +145,44 @@ class RNNModel(object):
                                                                                          initial_state_bw=self.state_bw,
                                                                                          time_major=False )
 
-                    rnn_outputs = tf.concat(outputs,2)
 
 
 
-                    #
+                        rnn_outputs = tf.concat(outputs, 2)
+                        cell_size = self.cell_size * 2
+                        # (self.state_fw, self.state_bw) = self.final_state
+                    else:
+
+                        outputs, self.final_state = tf.nn.dynamic_rnn(cell_fw,self.rnn_inputs,sequence_length=self.steps,
+                                                                      initial_state=self.state_fw,time_major=False)
+
+
+                        rnn_outputs = outputs
+                        cell_size = self.cell_size
+                        # self.state_fw = self.final_state
+
+
+                    self.check_tensor_1 = outputs
+                    self.check_tensor_2 = self.final_state
+                    self.check_tensor_3 = rnn_outputs
+
+
+
+
+
+                    # self.output_concat = rnn_outputs
+
+                    # if time is major we want the state to be fed back
+                    # if self.is_timemajor:
+
+
+                    # (self.state_fw, self.state_bw) = self.final_state
+
+
                     # rnn_outputs, self.final_state = tf.nn.dynamic_rnn(cell_fw,self.rnn_inputs,sequence_length=self.steps,
                     #                                                   initial_state=self.state_fw,time_major=False)
+
+
                     rnn_outputs = tf.nn.dropout(rnn_outputs, keep_prob=self.keepprob,name='rnn_outputs')
 
 
@@ -133,7 +191,7 @@ class RNNModel(object):
 
                 with tf.name_scope('output_layer'):
                     with tf.name_scope('Weights'):
-                        Wout = self.weight_variable([self.cell_size,self.num_classes],name='W_out')
+                        Wout = self.weight_variable([cell_size,self.num_classes],name='W_out')
                         if self.oper_mode == RNNModel.OperMode.OPER_MODE_TRAIN:
                             tf.summary.histogram('output_layer/Weights',Wout)
                     with tf.name_scope('Biases'):
@@ -144,18 +202,22 @@ class RNNModel(object):
 
                     if self.is_classifier is True:
                         # get last rnn output
-                        idx = tf.range(tf.cast(batch_size,tf.int64))
-                        idx = idx * tf.cast(tf.shape(tf.cast(rnn_outputs,tf.int64))[1],tf.int64)
-                        idx = idx + (self.steps - 1)
-                        rnn_outputs = tf.gather(tf.reshape(rnn_outputs, [-1, self.cell_size]), idx)
-                        # rnn_outputs = rnn_outputs[-1]
+                        # self.test_rnn_outputs = tf.transpose(rnn_outputs,perm=[1,0,2])[-1]
+
+                        # if self.is_timemajor is True:
+                        #     rnn_outputs = rnn_outputs[-1]
+                        # else:
+                        self.idx0 = tf.range(tf.cast(batch_size,tf.int64))
+                        self.idx1 = self.idx0 * tf.cast(tf.shape(tf.cast(rnn_outputs,tf.int64))[1],tf.int64)
+                        self.idx2 =  self.idx1 + (self.steps - 1)
+                        rnn_outputs = tf.gather(tf.reshape(rnn_outputs, [-1, cell_size]), self.idx2)
+
                     else:
-                        rnn_outputs = tf.reshape(rnn_outputs, [-1, self.cell_size])
+                        rnn_outputs = tf.reshape(rnn_outputs, [-1, cell_size])
 
 
                     #for seq2seq calcuations
                     self.rnn_outputs = rnn_outputs
-
 
                     logits = tf.add(tf.matmul(rnn_outputs,Wout),Bout)
 
@@ -163,30 +225,30 @@ class RNNModel(object):
                     self.logits = tf.nn.softmax(logits)
 
                     self.predictions = tf.argmax(self.logits,axis=-1)
-                    self.flat_labels = tf.reshape(self.ys, [-1])
-
+                    self.flat_labels = tf.reshape(ys, [-1])
 
                 with tf.name_scope('accuracy'):
                     self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.flat_labels,self.predictions),tf.float32),name='accuracy')
                     tf.summary.scalar('Accuracy',self.accuracy)
 
                 with tf.name_scope('cross_entropy'):
+                    self.loss = tf.reduce_mean(
+                        tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.flat_labels))
+                    # if self.is_classifier:
+                    #     self.loss = tf.reduce_mean(
+                    #         tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.flat_labels))
+                    #
+                    # else:
+                    #     if self.is_timemajor is True:
+                    #         self.seq_logits =  tf.unstack(tf.reshape(logits, [tf.shape(self.xs)[1], -1, self.num_classes]),axis=0)
+                    #         self.seq_lables =  tf.unstack(ys, num=self.max_steps, axis=0)
+                    #         self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(xs), axis=-1)),num=self.max_steps, axis=0)
+                    #         self.loss = tf.contrib.legacy_seq2seq.sequence_loss(self.seq_logits, self.seq_lables,
+                    #                                                             self.seq_weights, name='loss')
+                    #     else:
+                    #         self.loss = tf.reduce_mean(
+                    #             tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.flat_labels))
 
-                    if self.is_classifier:
-                        self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits,labels=self.ys))
-                    else:
-                        # seq2seq loss
-                        # self.seq_logits =  tf.unstack(tf.reshape(logits, [-1,self.max_steps,self.num_classes]),axis=1)
-                        # self.seq_lables =  tf.unstack(self.ys,num=self.max_steps, axis=1)
-                        # # self.seq_lables = tf.reshape(self.ys,[-1])
-                        # self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(self.xs),axis=-1)),axis=1,num=self.max_steps)
-
-                        self.seq_logits =  tf.unstack(tf.reshape(logits, [self.max_steps,-1,self.num_classes]),axis=0)
-                        self.seq_lables =  tf.unstack(tf.transpose(self.ys), num=self.max_steps, axis=0)
-                        self.seq_weights = tf.unstack(tf.sign(tf.reduce_max(tf.abs(self.xs),axis=-1)),num=self.max_steps, axis=0)
-
-                        # self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=self.flat_labels))
-                        self.loss = tf.contrib.legacy_seq2seq.sequence_loss(self.seq_logits,self.seq_lables,self.seq_weights,name='loss')
                     tf.summary.scalar('Cross Entropy', self.loss)
                     # weights = tf.reshape
                     # tf.contrib.legacy_seq2seq.sequence_loss_by_example(logits=logits, labels=self.logits)
@@ -256,15 +318,42 @@ class RNNModel(object):
             total_acc = 0.0
 
             while not self.coord.should_stop():
-                _,loss,  accuracy, summary, final_state, ys, steps = self.sess.run([self.train_step,self.loss, self.accuracy, self.summary, self.final_state, self.ys,self.steps],feed_dict)
+
+
+                # c1,c2,c3,pred, logits, fw,bw,fs,xs,ys,yf,steps  = self.sess.run([self.check_tensor_1, self.check_tensor_2,self.check_tensor_3,self.predictions, self.logits, self.state_fw, self.state_bw, self.final_state, self.xs, self.ys, self.flat_labels, self.steps],feed_dict)
+                # print('c1: ',np.shape(c1))
+                # print('c2: ',np.shape(c2))
+                # print('c3: ', np.shape(c3))
+                # print('fw: ',np.shape(fw))
+                # print('bw: ',np.shape(bw))
+                # print('fs: ',np.shape(fs))
+                #
+                # print('pred: ', np.shape(pred))
+                # print('logits: ',np.shape(logits))
+                #
+                # print('xs: ',np.shape(xs))
+                # print('ys: ',ys, np.shape(ys))
+                # print('yf: ',yf, np.shape(yf))
+                # print('steps: ',steps, np.shape(steps))
+                # continue
+
+                _,loss,  accuracy, summary, final_state, state_fw, ys, steps, pred     = self.sess.run([self.train_step,self.loss, self.accuracy, self.summary, self.final_state, self.state_fw, self.flat_labels, self.steps, self.predictions],feed_dict)
                 total_loss += loss
                 total_acc += accuracy
                 count += 1
+
+                print('Accuracy: {} final_state: {}'.format(accuracy,np.shape(final_state)))
+                print('init_state: ', state_fw)
+                print('ys: ',ys)
+                print('pred: ',pred)
+                print('steps: ',steps)
+
                 #_, loss, accuracy, summary, rnn_outputs, logits, predictions, flat_labels = self.sess.run(
                 #    [self.train_step, self.loss, self.accuracy, self.summary, self.rnn_outputs, self.logits, self.predictions, self.flat_labels], feed_dict)
                 # print('State:{} {} {}'.format(self.oper_mode,np.shape(state),state))
                 # print(final_state)
                 # print('Final State:{} {} {}'.format(self.oper_mode,np.shape(final_state), final_state))
+
                 current_step = tf.train.global_step(self.sess, self.global_step)
                 print('Train: ',current_step,loss,accuracy)
                 if current_step % self.validation_step == 0:
@@ -286,8 +375,13 @@ class RNNModel(object):
 
                 # print(np.shape(pred), np.shape(labels), accuracy)
                 # print(pred,labels)
-                # feed_dict[self.state] = final_state
-
+                if self.is_state_feedback is True:
+                    if self.is_bidirectional is True:
+                        (state_fw,state_bw) = final_state
+                        feed_dict[self.state_fw] = state_fw
+                        feed_dict[self.state_bw] = state_bw
+                    else:
+                        feed_dict[self.state_fw] = final_state
 
 
 
@@ -375,8 +469,18 @@ class RNNModel(object):
             self.oper_mode = RNNModel.OperMode.OPER_MODE_NONE
             self.validation_step = 10
             self.is_classifier = False
+            self.is_timemajor = False
+            self.is_bidirectional = False
+            self.is_state_feedback = False
+
+        def set_state_feedback(self,flag):
+            self.is_state_feedback = flag
+            return self
 
 
+        def set_bi_directional(self,flag):
+            self.is_bidirectional = flag
+            return self
 
         def set_epochs(self,val):
             self.epochs = val
@@ -446,6 +550,9 @@ class RNNModel(object):
             self.is_classifier = flag
             return self
 
+        def set_time_major(self,flag):
+            self.is_timemajor = flag
+            return self
 
         def build(self):
             return RNNModel(builder=self)
